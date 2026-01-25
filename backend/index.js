@@ -1,30 +1,45 @@
-// backend/index.js
+const express = require('express');
+const cors = require('cors');
+const app = express();
+require('dotenv').config();
+
+const PORT = 3001;
 const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
-async function sendTestNotification() {
-    console.log("Discord通知を送信中...");
+app.use(cors()); // 追加：すべてのドメインからのアクセスを許可（開発用）
+// JSON形式のリクエストを解析できるようにする
+app.use(express.json());
+
+// テスト用エンドポイント (http://localhost:3001/ へのアクセス確認)
+app.get('/', (req, res) => {
+    res.send('Pro-Fit Manager API is running!');
+});
+
+// Discord通知用エンドポイント
+app.post('/api/notify', async (req, res) => {
+    const { message } = req.body;
     
+    console.log("Discord通知リクエストを受信:", message);
+
     try {
         const response = await fetch(DISCORD_WEBHOOK_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                content: "🚀 **Pro-Fit Manager 起動テスト**\nhisaoさん、VPS上のコンテナから通知に成功しました！"
+                content: message || "デフォルトの通知メッセージです。"
             })
         });
 
         if (response.ok) {
-            console.log("通知成功！Discordを確認してください。");
+            res.status(200).json({ success: true, detail: "Discordに送信しました" });
         } else {
-            console.error("通知失敗:", response.statusText);
+            res.status(500).json({ success: false, detail: "Discord送信に失敗しました" });
         }
     } catch (error) {
-        console.error("エラーが発生しました:", error);
+        res.status(500).json({ success: false, detail: error.message });
     }
-}
+});
 
-// 起動時に1回だけ実行
-sendTestNotification();
-
-// コンテナを落とさないためのダミー待機
-setInterval(() => {}, 1000);
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});

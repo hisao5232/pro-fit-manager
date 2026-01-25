@@ -18,7 +18,8 @@ services:
     build: ./backend
     container_name: profit-api
     restart: always
-    # 外部公開せず、内部ネットワーク経由でアクセス
+    ports:
+      - "3001:3001" # これを追記（開発用）
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
@@ -44,4 +45,3 @@ services:
 networks:
   profit-network:
     driver: bridge
-    
