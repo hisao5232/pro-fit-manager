@@ -1,0 +1,47 @@
+services:
+  # 1. データベース (PostgreSQL)
+  db:
+    image: postgres:16
+    container_name: profit-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    networks:
+      - profit-network
+
+  # 2. バックエンド API (Node.js)
+  backend:
+    build: ./backend
+    container_name: profit-api
+    restart: always
+    # 外部公開せず、内部ネットワーク経由でアクセス
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
+    depends_on:
+      - db
+    networks:
+      - profit-network
+
+  # 3. フロントエンド (React / Vite)
+  frontend:
+    build: ./frontend
+    container_name: profit-frontend
+    ports:
+      - "5173:5173" # ブラウザからアクセスするために公開
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - profit-network
+    stdin_open: true
+    tty: true
+
+networks:
+  profit-network:
+    driver: bridge
+    
