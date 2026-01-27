@@ -1,42 +1,79 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* 既存の内容をすべて消して、これに差し替えてください */
+:root {
+  --main-black: #1a1a1a;
+  --sub-grey: #888;
+  --light-grey: #f9f9f9;
+  --border-color: #e0e0e0;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+body {
+  margin: 0;
+  background-color: #ffffff; /* 背景は白 */
+  color: var(--main-black) !important; /* 文字は絶対に黒 */
+  font-family: sans-serif;
+  display: flex;
+  justify-content: center;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.container {
+  width: 100%;
+  max-width: 600px;
+  margin: 40px 20px;
+  color: var(--main-black);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+h1 { color: var(--main-black); text-align: center; }
+
+/* 入力欄：背景を薄いグレー、文字を黒に */
+input[type="text"], .input-description {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: #fcfcfc;
+  color: var(--main-black); /* ここが重要 */
+  box-sizing: border-box;
 }
 
-.card {
-  padding: 2em;
+/* リスト部分 */
+.task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--main-black);
 }
 
-.read-the-docs {
-  color: #888;
+.task-text {
+  font-weight: bold;
+  font-size: 1.1rem;
+  display: block;
+}
+
+.task-text.completed {
+  text-decoration: line-through;
+  color: #ccc;
+}
+
+/* 詳細部分のスタイル */
+.task-desc-display {
+  font-size: 0.9rem;
+  color: #444;
+  background: var(--light-grey);
+  padding: 10px;
+  margin-top: 5px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+}
+
+.add-btn {
+  background: var(--main-black);
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
 }

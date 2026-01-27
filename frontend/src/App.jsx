@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import './App.css' // CSSをインポート
 
 function App() {
   const [status, setStatus] = useState('待機中...')
   const [message, setMessage] = useState('')
+  const [description, setDescription] = useState('') // 詳細用のState
   const [tasks, setTasks] = useState([]) // タスク一覧を保持する
 
   const API_BASE = 'http://210.131.216.110:3001/api'
@@ -54,96 +56,74 @@ function App() {
 
   const sendNotification = async (e) => {
     e.preventDefault();
-    if (!message) return alert('メッセージを入力してください');
+    if (!message) return alert('タスク名を入力してください');
 
     setStatus('送信中...')
     try {
       const response = await fetch(`${API_BASE}/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: message })
+        body: JSON.stringify({ message, description }) // descriptionを送る
       })
       
       if (response.ok) {
         setStatus('送信成功！')
-        setMessage('')
-        fetchTasks() // 投稿後にリストを再取得して更新する
-      } else {
-        setStatus('エラーが発生しました。')
+        setMessage(''); setDescription(''); // 入力欄をクリア
+        fetchTasks()
       }
     } catch (err) {
-      setStatus('接続に失敗しました。')
+      setStatus('接続失敗')
     }
   }
 
   return (
-    <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto' }}>
+    <div className="container">
       <h1>Pro-Fit Manager</h1>
       
-      <div style={{ background: '#f4f4f4', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-        <p>ステータス: {status}</p>
-        <form onSubmit={sendNotification}>
-          <input 
-            type="text" 
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="新しいタスクを入力"
-            style={{ padding: '10px', width: '70%', borderRadius: '4px', border: '1px solid #ccc' }}
-          />
-          <button type="submit" style={{ padding: '10px', marginLeft: '5px', backgroundColor: '#5865F2', color: 'white', border: 'none', borderRadius: '4px' }}>
-            追加
-          </button>
-        </form>
-      </div>
+      <form onSubmit={sendNotification} className="input-group">
+        <input 
+          type="text" 
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="タスク名"
+        />
+        {/* 詳細入力用のtextareaを追加 */}
+        <textarea 
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="詳細"
+          className="input-description"
+        />
+        <button type="submit" className="add-btn">タスク追加</button>
+      </form>
 
-      <div style={{ textAlign: 'left' }}>
-        <h2>現在のタスク一覧</h2>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
-    {tasks.map(task => (
-      <li 
-    key={task.id} 
-    onClick={() => toggleTask(task.id)}
-    style={{ 
-      padding: '10px', 
-      borderBottom: '1px solid #eee', 
-      display: 'flex', 
-      justifyContent: 'space-between',
-      alignItems: 'center', // 垂直中央揃え
-      cursor: 'pointer',
-      backgroundColor: task.is_completed ? '#f9f9f9' : 'transparent'
-    }}
-  >
-    <div style={{ flex: 1 }}> {/* 文字部分を広げる */}
-      <span style={{ 
-        textDecoration: task.is_completed ? 'line-through' : 'none',
-        color: task.is_completed ? '#aaa' : '#000',
-        marginRight: '10px'
-      }}>
-        {task.content}
-      </span>
-      <br />
-      <small style={{ color: '#888', fontSize: '10px' }}>
-        {new Date(task.created_at).toLocaleString('ja-JP')}
-      </small>
-    </div>
+      <ul className="task-list">
+  {tasks.map(task => (
+    <li key={task.id} className="task-item">
+      <div className="task-content" onClick={() => toggleTask(task.id)}>
+        {/* タスク名 */}
+        <span className={`task-text ${task.is_completed ? 'completed' : ''}`}>
+          {task.content}
+        </span>
 
-    <button 
-      onClick={(e) => deleteTask(e, task.id)}
-      style={{ 
-        backgroundColor: '#ff4d4d', 
-        color: 'white', 
-        border: 'none', 
-        borderRadius: '4px', 
-        padding: '5px 10px',
-        cursor: 'pointer'
-      }}
-    >
-      削除
-    </button>
-  </li>
-    ))}
-  </ul>
+        {/* 詳細内容：データがある場合のみ表示 */}
+        {task.description && (
+          <div className="task-desc-display">
+            {task.description}
+          </div>
+        )}
+
+        <span className="task-date">
+          {new Date(task.created_at).toLocaleString('ja-JP')}
+        </span>
       </div>
+      
+      <button className="del-btn" onClick={(e) => deleteTask(e, task.id)}>
+        削除
+      </button>
+    </li>
+  ))}
+</ul>
     </div>
   )
 }

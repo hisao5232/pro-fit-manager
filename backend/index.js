@@ -6,7 +6,6 @@ require('dotenv').config();
 const app = express();
 const PORT = 3001;
 
-// PostgreSQL接続設定
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
@@ -14,7 +13,7 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json());
 
-// タスク取得API (ToDoリストの表示用)
+// 1. タスク取得 (詳細も含む全カラムを返す)
 app.get('/api/tasks', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
@@ -24,44 +23,36 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
-// タスク登録API (DB保存 + Discord通知)
+// 2. タスク登録 (詳細 description を保存する方に一本化)
 app.post('/api/notify', async (req, res) => {
-  const { message } = req.body;
+  const { message, description } = req.body;
   
   try {
-    // 1. データベースに保存
     const dbResult = await pool.query(
-      'INSERT INTO tasks (content) VALUES ($1) RETURNING *',
-      [message]
+      'INSERT INTO tasks (content, description) VALUES ($1, $2) RETURNING *',
+      [message, description]
     );
 
-    // 2. Discordに通知 (非同期で実行)
+    // Discord通知
     fetch(process.env.DISCORD_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content: `📝 **新しいタスクが登録されました**\n内容: ${message}`
+        content: `📝 **新しいタスク**\n内容: ${message}\n詳細: ${description || 'なし'}`
       })
     }).catch(err => console.error("Discord通知エラー:", err));
 
-    // 保存したデータをフロントエンドに返す
-    res.status(200).json({ 
-      success: true, 
-      task: dbResult.rows[0],
-      detail: "DB保存とDiscord通知が完了しました" 
-    });
-
+    res.status(200).json({ success: true, task: dbResult.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, error: "サーバーエラーが発生しました" });
   }
 });
 
-// タスクの完了状態を切り替えるAPI
+// 3. 完了状態の切り替え
 app.patch('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    // 現在の状態を反転させるSQL
     const result = await pool.query(
       'UPDATE tasks SET is_completed = NOT is_completed WHERE id = $1 RETURNING *',
       [id]
@@ -72,7 +63,7 @@ app.patch('/api/tasks/:id', async (req, res) => {
   }
 });
 
-// タスクを削除するAPI
+// 4. 削除
 app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   try {
