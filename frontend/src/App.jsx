@@ -1,131 +1,84 @@
-import { useState, useEffect } from 'react'
-import './App.css' // CSSをインポート
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import Login from './Login'; // Loginコンポーネントをインポート
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://pro-fit-api.go-pro-world.net/api';
 
 function App() {
-  const [status, setStatus] = useState('待機中...')
-  const [message, setMessage] = useState('')
-  const [description, setDescription] = useState('') // 詳細用のState
-  const [tasks, setTasks] = useState([]) // タスク一覧を保持する
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [tasks, setTasks] = useState([]);
+  const [content, setContent] = useState('');
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://pro-fit-api.go-pro-world.net/api';
-
-  const toggleTask = async (id) => {
-    try {
-      const response = await fetch(`${API_BASE}/tasks/${id}`, {
-        method: 'PATCH',
-      })
-      if (response.ok) {
-        fetchTasks() // 状態が変わったので再取得
-      }
-    } catch (err) {
-      console.error('更新失敗:', err)
+  // ログイン後にタスクを取得
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchTasks();
     }
-  }
+  }, [isLoggedIn]);
 
-  const deleteTask = async (e, id) => {
-    e.stopPropagation(); // 親要素のonClick（完了切り替え）が動かないようにする
-    if (!window.confirm('このタスクを削除しますか？')) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/tasks/${id}`, {
-        method: 'DELETE',
-      })
-      if (response.ok) {
-        fetchTasks()
-      }
-    } catch (err) {
-      console.error('削除失敗:', err)
-    }
-  }
-
-  // タスク一覧を取得する関数
   const fetchTasks = async () => {
     try {
-      const response = await fetch(`${API_BASE}/tasks`)
-      const data = await response.json()
-      setTasks(data)
+      const res = await axios.get(`${API_BASE}/tasks`);
+      setTasks(res.data);
     } catch (err) {
-      console.error('データ取得失敗:', err)
+      console.error(err);
     }
-  }
+  };
 
-  // 初回読み込み時に実行
-  useEffect(() => {
-    fetchTasks()
-  }, [])
-
-  const sendNotification = async (e) => {
+  const addTask = async (e) => {
     e.preventDefault();
-    if (!message) return alert('タスク名を入力してください');
-
-    setStatus('送信中...')
+    if (!content) return;
     try {
-      const response = await fetch(`${API_BASE}/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, description }) // descriptionを送る
-      })
-      
-      if (response.ok) {
-        setStatus('送信成功！')
-        setMessage(''); setDescription(''); // 入力欄をクリア
-        fetchTasks()
-      }
+      await axios.post(`${API_BASE}/notify`, { content, description: "" });
+      setContent('');
+      fetchTasks();
     } catch (err) {
-      setStatus('接続失敗')
+      console.error(err);
     }
+  };
+
+  // 1. 未ログインならLogin画面を表示
+  if (!isLoggedIn) {
+    return <Login onLogin={() => setIsLoggedIn(true)} />;
   }
 
+  // 2. ログイン済みならメイン画面を表示
   return (
-    <div className="container">
-      <h1>Pro-Fit Manager</h1>
-      
-      <form onSubmit={sendNotification} className="input-group">
-        <input 
-          type="text" 
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="タスク名"
-        />
-        {/* 詳細入力用のtextareaを追加 */}
-        <textarea 
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="詳細"
-          className="input-description"
-        />
-        <button type="submit" className="add-btn">タスク追加</button>
-      </form>
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-2xl mx-auto">
+        <header className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tighter">TASK DASHBOARD</h1>
+          <button 
+            onClick={() => setIsLoggedIn(false)}
+            className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors"
+          >
+            LOGOUT
+          </button>
+        </header>
 
-      <ul className="task-list">
-  {tasks.map(task => (
-    <li key={task.id} className="task-item">
-      <div className="task-content" onClick={() => toggleTask(task.id)}>
-        {/* タスク名 */}
-        <span className={`task-text ${task.is_completed ? 'completed' : ''}`}>
-          {task.content}
-        </span>
+        <form onSubmit={addTask} className="mb-8 flex gap-2">
+          <input
+            className="flex-1 border border-slate-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="新しいタスクを入力..."
+          />
+          <button className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 transition-all">
+            追加
+          </button>
+        </form>
 
-        {/* 詳細内容：データがある場合のみ表示 */}
-        {task.description && (
-          <div className="task-desc-display">
-            {task.description}
-          </div>
-        )}
-
-        <span className="task-date">
-          {new Date(task.created_at).toLocaleString('ja-JP')}
-        </span>
+        <div className="space-y-3">
+          {tasks.map((task) => (
+            <div key={task.id} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <span className="text-slate-700 font-medium">{task.content}</span>
+              <span className="text-[10px] bg-slate-100 text-slate-400 px-2 py-1 rounded-full font-bold">TASK ID: {task.id}</span>
+            </div>
+          ))}
+        </div>
       </div>
-      
-      <button className="del-btn" onClick={(e) => deleteTask(e, task.id)}>
-        削除
-      </button>
-    </li>
-  ))}
-</ul>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
