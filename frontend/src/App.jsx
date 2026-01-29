@@ -70,40 +70,120 @@ function App() {
   if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 font-sans touch-manipulation">
       <div className="max-w-3xl mx-auto">
+        {/* ヘッダー */}
         <header className="flex justify-between items-center mb-10 border-b border-white/5 pb-6">
-          <h1 className="text-3xl font-black italic text-white">PRO-FIT <span className="text-blue-500 not-italic">OPS</span></h1>
-          <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }} className="text-xs font-bold text-slate-500">LOGOUT</button>
+          <div>
+            <h1 className="text-3xl font-black italic text-white tracking-tighter">
+              PRO-FIT <span className="text-blue-500 not-italic">OPS</span>
+            </h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Maintenance Management</p>
+          </div>
+          <button 
+            onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }} 
+            className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-red-400 border border-white/10 rounded-lg transition-colors"
+          >
+            LOGOUT
+          </button>
         </header>
 
-        <form onSubmit={handleSubmit} className="mb-12 bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-2xl">
+        {/* 入力フォーム：修正モード時は枠線の色を変えて強調 */}
+        <form 
+          onSubmit={handleSubmit} 
+          className={`mb-12 p-6 rounded-3xl border transition-all duration-300 shadow-2xl ${
+            editingId ? 'bg-amber-950/20 border-amber-500/50' : 'bg-slate-900/50 border-white/10'
+          }`}
+        >
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50" value={content} onChange={(e) => setContent(e.target.value)} placeholder="タスク..." required />
-              <input type="date" className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none text-slate-300" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-blue-400 uppercase ml-1">Task Title</label>
+                <input 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  value={content} 
+                  onChange={(e) => setContent(e.target.value)} 
+                  placeholder="修理・点検項目..." 
+                  required 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-blue-400 uppercase ml-1">Target Date</label>
+                <input 
+                  type="date" 
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none text-slate-300 focus:ring-2 focus:ring-blue-500/50" 
+                  value={dueDate} 
+                  onChange={(e) => setDueDate(e.target.value)} 
+                />
+              </div>
             </div>
-            <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 outline-none" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="詳細..." />
-            <button className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl hover:opacity-90">{editingId ? 'UPDATE TASK' : 'DEPLOY TASK'}</button>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-blue-400 uppercase ml-1">Details</label>
+              <textarea 
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 outline-none focus:ring-2 focus:ring-blue-500/50 resize-none" 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+                placeholder="不具合状況や交換部品など..." 
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <button className={`flex-1 font-black py-4 rounded-2xl transition-all active:scale-95 shadow-lg ${
+                editingId ? 'bg-amber-600 hover:bg-amber-500 shadow-amber-900/20' : 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20'
+              }`}>
+                {editingId ? 'UPDATE TASK' : 'DEPLOY TASK'}
+              </button>
+              {editingId && (
+                <button 
+                  type="button" 
+                  onClick={resetForm}
+                  className="px-6 bg-slate-800 text-slate-300 rounded-2xl font-bold text-xs hover:bg-slate-700"
+                >
+                  CANCEL
+                </button>
+              )}
+            </div>
           </div>
         </form>
 
+        {/* タスクリスト */}
         <div className="space-y-4">
+          {tasks.length === 0 && (
+            <div className="text-center py-20 border-2 border-dashed border-white/5 rounded-3xl">
+              <p className="text-slate-600 font-bold uppercase tracking-widest text-sm">No tasks assigned</p>
+            </div>
+          )}
           {tasks.map((task) => (
-            <div key={task.id} className="bg-white/5 p-5 rounded-2xl border border-white/5 flex justify-between items-start">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  {/* 日付バッジの表示 */}
-                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded">
-                    {task.due_date ? task.due_date.split('T')[0] : 'No Date'}
+            <div key={task.id} className="group bg-white/5 p-5 rounded-2xl border border-white/5 hover:border-blue-500/30 transition-all flex justify-between items-start shadow-sm">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
+                  {/* 日付表示の修正：ISO形式でも対応できるように slice(0, 10) を使用 */}
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    {task.due_date ? task.due_date.slice(0, 10) : 'NO DATE'}
                   </span>
-                  <h3 className="text-lg font-bold text-white">{task.content}</h3>
+                  <h3 className="text-lg font-bold text-white tracking-tight">{task.content}</h3>
                 </div>
-                {task.description && <p className="text-slate-400 text-sm border-l-2 border-slate-700 pl-3 my-2">{task.description}</p>}
+                {task.description && (
+                  <p className="text-slate-400 text-sm border-l-2 border-blue-500/30 pl-3 my-2 leading-relaxed whitespace-pre-wrap">
+                    {task.description}
+                  </p>
+                )}
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => startEdit(task)} className="text-[10px] font-bold text-slate-400 hover:text-amber-500">修正</button>
-                <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold text-slate-400 hover:text-red-500">削除</button>
+              
+              {/* 操作ボタン：少し大きくして押しやすく */}
+              <div className="flex flex-col gap-2 ml-4">
+                <button 
+                  onClick={() => startEdit(task)} 
+                  className="px-3 py-1.5 bg-white/5 rounded-lg text-[10px] font-black text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all uppercase tracking-tighter"
+                >
+                  Edit
+                </button>
+                <button 
+                  onClick={() => deleteTask(task.id)} 
+                  className="px-3 py-1.5 bg-white/5 rounded-lg text-[10px] font-black text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-all uppercase tracking-tighter"
+                >
+                  Del
+                </button>
               </div>
             </div>
           ))}

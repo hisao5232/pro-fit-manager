@@ -40,8 +40,8 @@ app.post('/api/notify', async (req, res) => {
   try {
     // DB保存
     const dbResult = await pool.query(
-      'INSERT INTO tasks (content, description) VALUES ($1, $2) RETURNING *',
-      [content, description || ""]
+      'INSERT INTO tasks (content, description, due_date) VALUES ($1, $2, $3) RETURNING *',
+      [content, description || "", due_date || new Date()] // due_dateがなければ今日を入れる
     );
 
     // Discord通知 (fetchが使えないNodeバージョンの場合は、axios等への差し替えが必要ですがNode 18+なら動きます)
