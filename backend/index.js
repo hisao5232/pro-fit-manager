@@ -14,13 +14,15 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json());
 
-// 1. タスク取得
+// 1. タスク取得 (日付順に変更)
 app.get('/api/tasks', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC');
+    // 期限(due_date)の近い順、かつ作成順でソート
+    const result = await pool.query(
+      'SELECT * FROM tasks ORDER BY due_date ASC, created_at DESC'
+    );
     res.json(result.rows);
   } catch (err) {
-    console.error("GET /api/tasks Error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });
