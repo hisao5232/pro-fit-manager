@@ -1,47 +1,64 @@
 services:
-  # 1. データベース (PostgreSQL)
+  backend:
+    build: ./backend
+    container_name: profit-backend
+    restart: always
+    env_file: .env
+    expose:
+      - "3001"
+    environment:
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - traefik-public
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.profit-api.rule=Host(`pro-fit-api.go-pro-world.net`)"
+      - "traefik.http.routers.profit-api.entrypoints=websecure"
+      - "traefik.http.routers.profit-api.tls=true"
+      - "traefik.http.routers.profit-api.tls.certresolver=lets-encrypt"
+      - "traefik.http.services.profit-api.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik-public"
+
   db:
-    image: postgres:16
+    image: postgres:15
     container_name: profit-db
     restart: always
+    env_file: .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - ./db-data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
-      - profit-network
+      - internal
 
-  # 2. バックエンド API (Node.js)
-  backend:
-    build: ./backend
-    container_name: profit-api
-    restart: always
-    ports:
-      - "3001:3001" # これを追記（開発用）
-    environment:
-      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
-    depends_on:
-      - db
-    networks:
-      - profit-network
-
-  # 3. フロントエンド (React / Vite)
   frontend:
     build: ./frontend
     container_name: profit-frontend
+    restart: always
     ports:
-      - "5173:5173" # ブラウザからアクセスするために公開
+      - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - profit-network
+      - internal # backendと同じネットワークに参加
     stdin_open: true
     tty: true
 
 networks:
-  profit-network:
+  traefik-public:
+    external: true
+  internal:
     driver: bridge

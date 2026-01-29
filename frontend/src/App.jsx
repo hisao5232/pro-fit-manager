@@ -7,7 +7,7 @@ function App() {
   const [description, setDescription] = useState('') // 詳細用のState
   const [tasks, setTasks] = useState([]) // タスク一覧を保持する
 
-  const API_BASE = 'http://210.131.216.110:3001/api'
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://pro-fit-api.go-pro-world.net/api';
 
   const toggleTask = async (id) => {
     try {
