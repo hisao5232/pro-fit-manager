@@ -10,14 +10,12 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// CORS設定（すべてのオリジンを許可）
 app.use(cors());
 app.use(express.json());
 
-// 1. タスク取得 (日付順に変更)
+// 1. タスク取得 (期限の近い順、かつ新しく作った順)
 app.get('/api/tasks', async (req, res) => {
   try {
-    // 期限(due_date)の近い順、かつ作成順でソート
     const result = await pool.query(
       'SELECT * FROM tasks ORDER BY due_date ASC, created_at DESC'
     );
@@ -27,38 +25,35 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
-// 2. タスク登録 (フロントエンドの content と名称を統一)
+// 2. タスク登録 (due_date を受け取るように修正)
 app.post('/api/notify', async (req, res) => {
-  // フロントエンドから送られてくる名前 'content' で受け取る
-  const { content, description } = req.body;
+  // ★修正ポイント: due_date をしっかり受け取る
+  const { content, description, due_date } = req.body;
   
-  // バリデーション: contentが空の場合はエラーを返す
   if (!content) {
-    return res.status(400).json({ success: false, error: "内容(content)は必須です" });
+    return res.status(400).json({ success: false, error: "内容は必須です" });
   }
 
   try {
-    // DB保存
     const dbResult = await pool.query(
       'INSERT INTO tasks (content, description, due_date) VALUES ($1, $2, $3) RETURNING *',
-      [content, description || "", due_date || new Date()] // due_dateがなければ今日を入れる
+      [content, description || "", due_date || new Date()] 
     );
 
-    // Discord通知 (fetchが使えないNodeバージョンの場合は、axios等への差し替えが必要ですがNode 18+なら動きます)
     if (process.env.DISCORD_WEBHOOK_URL) {
       fetch(process.env.DISCORD_WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: `📝 **新しいタスクを追加しました**\n**内容:** ${content}\n**詳細:** ${description || 'なし'}`
+          content: `📝 **新規タスク**\n**期限:** ${due_date || '未設定'}\n**内容:** ${content}\n**詳細:** ${description || 'なし'}`
         })
       }).catch(err => console.error("Discord通知エラー:", err));
     }
 
     res.status(200).json({ success: true, task: dbResult.rows[0] });
   } catch (err) {
-    console.error("POST /api/notify Error:", err);
-    res.status(500).json({ success: false, error: "サーバーエラーが発生しました" });
+    console.error("POST Error:", err);
+    res.status(500).json({ success: false, error: "サーバーエラー" });
   }
 });
 
@@ -70,9 +65,6 @@ app.patch('/api/tasks/:id', async (req, res) => {
       'UPDATE tasks SET is_completed = NOT is_completed WHERE id = $1 RETURNING *',
       [id]
     );
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "タスクが見つかりません" });
-    }
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -83,11 +75,8 @@ app.patch('/api/tasks/:id', async (req, res) => {
 app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "タスクが見つかりません" });
-    }
-    res.json({ success: true, message: 'タスクを削除しました' });
+    await pool.query('DELETE FROM tasks WHERE id = $1', [id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -97,21 +86,14 @@ app.delete('/api/tasks/:id', async (req, res) => {
 app.put('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   const { content, description, due_date } = req.body;
-
   try {
     const result = await pool.query(
       'UPDATE tasks SET content = $1, description = $2, due_date = $3 WHERE id = $4 RETURNING *',
       [content, description, due_date, id]
     );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "タスクが見つかりません" });
-    }
-
     res.json({ success: true, task: result.rows[0] });
   } catch (err) {
-    console.error("UPDATE Error:", err);
-    res.status(500).json({ error: "サーバーエラーで更新できませんでした" });
+    res.status(500).json({ error: "更新失敗" });
   }
 });
 
