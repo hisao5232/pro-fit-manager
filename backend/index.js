@@ -91,6 +91,28 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// 5. タスクの更新 (UPDATE)
+app.put('/api/tasks/:id', async (req, res) => {
+  const { id } = req.params;
+  const { content, description, due_date } = req.body;
+
+  try {
+    const result = await pool.query(
+      'UPDATE tasks SET content = $1, description = $2, due_date = $3 WHERE id = $4 RETURNING *',
+      [content, description, due_date, id]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "タスクが見つかりません" });
+    }
+
+    res.json({ success: true, task: result.rows[0] });
+  } catch (err) {
+    console.error("UPDATE Error:", err);
+    res.status(500).json({ error: "サーバーエラーで更新できませんでした" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
