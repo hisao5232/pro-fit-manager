@@ -13,7 +13,7 @@ const pool = new Pool({
 app.use(cors());
 app.use(express.json());
 
-// 1. タスク取得 (期限の近い順、かつ新しく作った順)
+// 1. タスク取得 (期限の近い順、かつ作成順)
 app.get('/api/tasks', async (req, res) => {
   try {
     const result = await pool.query(
@@ -25,9 +25,8 @@ app.get('/api/tasks', async (req, res) => {
   }
 });
 
-// 2. タスク登録 (due_date を受け取るように修正)
+// 2. タスク登録 (即時通知を削除)
 app.post('/api/notify', async (req, res) => {
-  // ★修正ポイント: due_date をしっかり受け取る
   const { content, description, due_date } = req.body;
   
   if (!content) {
@@ -39,17 +38,7 @@ app.post('/api/notify', async (req, res) => {
       'INSERT INTO tasks (content, description, due_date) VALUES ($1, $2, $3) RETURNING *',
       [content, description || "", due_date || new Date()] 
     );
-
-    if (process.env.DISCORD_WEBHOOK_URL) {
-      fetch(process.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: `📝 **新規タスク**\n**期限:** ${due_date || '未設定'}\n**内容:** ${content}\n**詳細:** ${description || 'なし'}`
-        })
-      }).catch(err => console.error("Discord通知エラー:", err));
-    }
-
+    // 即時通知は不要とのことなので、ここでの Discord 通知処理は削除しました
     res.status(200).json({ success: true, task: dbResult.rows[0] });
   } catch (err) {
     console.error("POST Error:", err);
@@ -82,7 +71,7 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
-// 5. タスクの更新 (UPDATE)
+// 5. タスクの更新
 app.put('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
   const { content, description, due_date } = req.body;
@@ -94,6 +83,41 @@ app.put('/api/tasks/:id', async (req, res) => {
     res.json({ success: true, task: result.rows[0] });
   } catch (err) {
     res.status(500).json({ error: "更新失敗" });
+  }
+});
+
+// 6. 毎朝5時半の通知用エンドポイント (cronから叩かれる)
+app.get('/api/daily-report', async (req, res) => {
+  try {
+    // スウェーデン語(sv-SE)ロケールを使うと YYYY-MM-DD 形式が簡単に取得できます
+    const today = new Date().toLocaleDateString('sv-SE');
+    
+    const result = await pool.query(
+      'SELECT content, description FROM tasks WHERE due_date = $1',
+      [today]
+    );
+
+    if (result.rows.length > 0) {
+      const taskList = result.rows.map(t => `🔹 **${t.content}**\n${t.description || '詳細なし'}`).join('\n\n');
+      
+      if (process.env.DISCORD_WEBHOOK_URL) {
+        await fetch(process.env.DISCORD_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: `🌅 **本日のタスク予定 (${today})**\n\n${taskList}`
+          })
+        });
+        res.json({ success: true, message: "通知を送信しました" });
+      } else {
+        res.status(400).json({ error: "Webhook URLが設定されていません" });
+      }
+    } else {
+      res.json({ success: true, message: "本日の予定はありません" });
+    }
+  } catch (err) {
+    console.error("Daily Report Error:", err);
+    res.status(500).json({ error: "サーバーエラーが発生しました" });
   }
 });
 
