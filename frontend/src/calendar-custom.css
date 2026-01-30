@@ -1,90 +1,113 @@
-.custom-calendar {
-  background: transparent !important;
-  border: none !important;
-  width: 100% !important;
-  color: white !important;
-}
-
-.react-calendar__tile {
-  height: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-}
-
-.react-calendar__tile--active {
-  background: #2563eb !important;
-  border-radius: 12px;
-  color: white !important;
-}
-
-.react-calendar__tile:hover {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-radius: 12px;
-}
-
-.dot {
-  height: 6px;
-  width: 6px;
-  background-color: #3b82f6;
-  border-radius: 50%;
-  margin-top: 4px;
-}
-
-/* 曜日の色 */
-.react-calendar__month-view__weekdays__weekday {
-  color: #3b82f6;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-/* カレンダー全体のサイズアップ */
+/* カレンダー全体のベース設定 */
 .full-calendar {
   width: 100% !important;
   background: transparent !important;
   border: none !important;
-  font-family: sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   color: white !important;
 }
 
-/* 1マスの高さを確保 */
+/* 1マス（日付タイル）の基本設定 */
 .react-calendar__tile {
-  height: 100px !important;
+  height: 110px !important; /* タスク名が見えるよう高めに設定 */
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
   justify-content: flex-start !important;
   padding: 8px !important;
-  border: 0.5px solid rgba(255,255,255,0.05) !important;
+  border: 0.5px solid rgba(255, 255, 255, 0.03) !important;
+  transition: background 0.2s ease;
 }
 
-/* タスクラベルのスタイル */
+/* ホバー時の挙動 */
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 現在選択されている日のスタイル */
+.react-calendar__tile--active {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border: 1px solid #2563eb !important;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------
+   曜日ごとの色分け設定 (日曜始まり)
+   -------------------------------------------------- */
+
+/* 平日のデフォルトカラー */
+.react-calendar__month-view__weekdays__weekday,
+.react-calendar__month-view__days__day {
+  color: #94a3b8; /* グレー寄り */
+}
+
+/* 日曜日: 1列目 (薄いピンク寄り) */
+.react-calendar__month-view__weekdays__weekday:nth-child(1),
+.react-calendar__month-view__days__day:nth-child(7n+1) {
+  color: #f472b6 !important;
+}
+
+/* 土曜日: 7列目 (薄いブルー) */
+.react-calendar__month-view__weekdays__weekday:nth-child(7),
+.react-calendar__month-view__days__day:nth-child(7n) {
+  color: #60a5fa !important;
+}
+
+/* --------------------------------------------------
+   タスク表示のスタイル
+   -------------------------------------------------- */
+
 .task-labels {
   width: 100%;
-  overflow-y: auto;
-  margin-top: 4px;
+  overflow: hidden;
+  margin-top: 6px;
 }
 
 .task-label-item {
   background: #2563eb;
   color: white;
-  font-size: 9px;
-  padding: 2px 4px;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
   border-radius: 4px;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.1s ease, background 0.2s ease;
 }
 
-.react-calendar__tile--active {
-  background: rgba(37, 99, 235, 0.2) !important;
-  border: 1px solid #2563eb !important;
+.task-label-item:hover {
+  background: #3b82f6;
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------
+   ナビゲーション・その他
+   -------------------------------------------------- */
+
+.react-calendar__navigation {
+  margin-bottom: 1em;
 }
 
 .react-calendar__navigation button {
   color: white !important;
   font-weight: bold;
+  font-size: 1.1rem;
+  min-width: 44px;
+  background: none;
+}
+
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 曜日の下線を消す */
+abbr[title] {
+  text-decoration: none;
 }

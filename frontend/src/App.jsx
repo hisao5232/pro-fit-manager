@@ -13,7 +13,8 @@ function App() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // 入力フォーム用
+  // フォーム用
+  const [editingId, setEditingId] = useState(null);
   const [content, setContent] = useState('');
   const [description, setDescription] = useState('');
 
@@ -31,35 +32,63 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  // カレンダー内にタスクのタイトルを表示
+  // タスクラベルをクリックした時の処理（修正モード）
+  const handleEditClick = (e, task) => {
+    e.stopPropagation(); // 日付クリックイベントの発火を防ぐ
+    setEditingId(task.id);
+    setContent(task.content);
+    setDescription(task.description);
+    setSelectedDate(new Date(task.due_date));
+    setIsModalOpen(true);
+  };
+
+  // カレンダー内の表示
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
-      const dateString = date.toLocaleDateString('sv-SE'); // YYYY-MM-DD形式
+      const dateString = date.toLocaleDateString('sv-SE');
       const dayTasks = tasks.filter(t => t.due_date && t.due_date.slice(0, 10) === dateString);
       return (
         <div className="task-labels">
           {dayTasks.map(t => (
-            <div key={t.id} className="task-label-item">{t.content}</div>
+            <div 
+              key={t.id} 
+              className="task-label-item"
+              onClick={(e) => handleEditClick(e, t)}
+            >
+              {t.content}
+            </div>
           ))}
         </div>
       );
     }
   };
 
-  // 日付クリック時の処理
   const handleDateClick = (date) => {
     setSelectedDate(date);
-    setIsModalOpen(true); // モーダルを開く
+    setEditingId(null); // 新規作成モード
+    setContent('');
+    setDescription('');
+    setIsModalOpen(true);
   };
 
-  // タスク保存
   const handleSubmit = async (e) => {
     e.preventDefault();
     const dateString = selectedDate.toLocaleDateString('sv-SE');
     try {
-      await axios.post(`${API_BASE}/notify`, { content, description, due_date: dateString });
-      setContent('');
-      setDescription('');
+      if (editingId) {
+        await axios.put(`${API_BASE}/tasks/${editingId}`, { content, description, due_date: dateString });
+      } else {
+        await axios.post(`${API_BASE}/notify`, { content, description, due_date: dateString });
+      }
+      setIsModalOpen(false);
+      fetchTasks();
+    } catch (err) { console.error(err); }
+  };
+
+  const deleteTask = async () => {
+    if (!window.confirm("このタスクを削除しますか？")) return;
+    try {
+      await axios.delete(`${API_BASE}/tasks/${editingId}`);
       setIsModalOpen(false);
       fetchTasks();
     } catch (err) { console.error(err); }
@@ -68,18 +97,11 @@ function App() {
   if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-4">
       <div className="max-w-6xl mx-auto">
-        
-        {/* ヘッダー：ログアウトを右上に配置 */}
         <header className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-black italic text-white">PRO-FIT <span className="text-blue-500">OPS</span></h1>
-          <button 
-            onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }}
-            className="text-xs font-bold text-slate-500 hover:text-red-400 transition-colors"
-          >
-            LOGOUT
-          </button>
+          <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }} className="text-xs font-bold text-slate-500 hover:text-red-400">LOGOUT</button>
         </header>
 
         <div className="bg-slate-900/50 rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
@@ -89,28 +111,28 @@ function App() {
             value={selectedDate}
             tileContent={tileContent}
             locale="ja-JP"
+            calendarType="gregory" // ★日曜始まりに設定
             className="full-calendar"
           />
         </div>
 
-        {/* 入力モーダル */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 border border-white/10 w-full max-w-md p-6 rounded-3xl shadow-2xl">
-              <h2 className="text-xl font-bold text-blue-400 mb-4">{selectedDate.toLocaleDateString('ja-JP')} の新規タスク</h2>
+              <h2 className="text-xl font-bold text-blue-400 mb-4">
+                {editingId ? 'タスクを修正' : `${selectedDate.toLocaleDateString('ja-JP')} の新規タスク`}
+              </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <input 
-                  autoFocus
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50" 
-                  value={content} onChange={(e) => setContent(e.target.value)} placeholder="タスク名（例：油圧ホース交換）" required 
-                />
-                <textarea 
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 outline-none focus:ring-2 focus:ring-blue-500/50" 
-                  value={description} onChange={(e) => setDescription(e.target.value)} placeholder="詳細・メモ"
-                />
+                <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50" value={content} onChange={(e) => setContent(e.target.value)} placeholder="タスク名" required />
+                <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 outline-none focus:ring-2 focus:ring-blue-500/50" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="詳細・メモ" />
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500">保存</button>
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 bg-slate-800 text-slate-300 rounded-xl font-bold">キャンセル</button>
+                  <button type="submit" className="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500">
+                    {editingId ? '更新' : '保存'}
+                  </button>
+                  {editingId && (
+                    <button type="button" onClick={deleteTask} className="px-4 bg-red-900/30 text-red-500 rounded-xl font-bold border border-red-500/20">削除</button>
+                  )}
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 bg-slate-800 text-slate-300 rounded-xl font-bold">戻る</button>
                 </div>
               </form>
             </div>
@@ -120,5 +142,4 @@ function App() {
     </div>
   );
 }
-
 export default App;
