@@ -228,7 +228,10 @@ function App() {
             <div className="bg-orange-500/20 p-4 rounded-2xl text-orange-500 text-3xl font-bold italic">⚡</div>
             <div>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">30m Sprint Time</p>
-              <p className="text-4xl font-black text-white">{bodyStats.sprint_time.toFixed(2)} <span className="text-sm font-normal text-slate-500">sec</span></p>
+              <p className="text-4xl font-black text-white">
+                {(Number(bodyStats.sprint_time) || 0).toFixed(2)} 
+                <span className="text-sm font-normal text-slate-500"> sec</span>
+              </p>
             </div>
           </div>
           <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl flex items-center gap-6">
