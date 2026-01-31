@@ -18,10 +18,14 @@ function App() {
   const [content, setContent] = useState('');
   const [description, setDescription] = useState('');
 
+  // --- コンディション記録の状態管理 ---
+  const [bodyStats, setBodyStats] = useState({ height: 177, weight: 63, body_fat: 10 });
+
   useEffect(() => {
     if (isLoggedIn) {
       localStorage.setItem('isLoggedIn', 'true');
       fetchTasks();
+      fetchBodyStats(); // 初回読み込み時に体組成データも取得
     }
   }, [isLoggedIn]);
 
@@ -32,9 +36,34 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
+  // --- データ取得関数 ---
+  const fetchBodyStats = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/body-stats`);
+      if (res.data.length > 0) {
+        // 最新のレコードをセット
+        setBodyStats({
+          height: res.data[0].height || 177,
+          weight: res.data[0].weight || 63,
+          body_fat: res.data[0].body_fat || 10
+        });
+      }
+    } catch (err) { console.error("BodyStats fetch error:", err); }
+  };
+
+  // 体組成データの保存
+  const handleBodyStatsSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const dateString = new Date().toLocaleDateString('sv-SE');
+      await axios.post(`${API_BASE}/body-stats`, { ...bodyStats, date: dateString });
+      alert("コンディションを記録しました！");
+    } catch (err) { console.error("BodyStats save error:", err); }
+  };
+
   // タスクラベルをクリックした時の処理（修正モード）
   const handleEditClick = (e, task) => {
-    e.stopPropagation(); // 日付クリックイベントの発火を防ぐ
+    e.stopPropagation();
     setEditingId(task.id);
     setContent(task.content);
     setDescription(task.description);
@@ -42,7 +71,6 @@ function App() {
     setIsModalOpen(true);
   };
 
-  // カレンダー内の表示
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateString = date.toLocaleDateString('sv-SE');
@@ -50,11 +78,7 @@ function App() {
       return (
         <div className="task-labels">
           {dayTasks.map(t => (
-            <div 
-              key={t.id} 
-              className="task-label-item"
-              onClick={(e) => handleEditClick(e, t)}
-            >
+            <div key={t.id} className="task-label-item" onClick={(e) => handleEditClick(e, t)}>
               {t.content}
             </div>
           ))}
@@ -65,7 +89,7 @@ function App() {
 
   const handleDateClick = (date) => {
     setSelectedDate(date);
-    setEditingId(null); // 新規作成モード
+    setEditingId(null);
     setContent('');
     setDescription('');
     setIsModalOpen(true);
@@ -94,28 +118,76 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
+  // BMI計算ロジック
+  const bmi = (bodyStats.weight / ((bodyStats.height / 100) ** 2)).toFixed(1);
+
   if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto pb-20">
         <header className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-black italic text-white">PRO-FIT <span className="text-blue-500">OPS</span></h1>
-          <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }} className="text-xs font-bold text-slate-500 hover:text-red-400">LOGOUT</button>
+          <button onClick={() => { setIsLoggedIn(false); localStorage.removeItem('isLoggedIn'); }} className="text-xs font-bold text-slate-500 hover:text-red-400 transition-colors">LOGOUT</button>
         </header>
 
-        <div className="bg-slate-900/50 rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        {/* カレンダーセクション */}
+        <div className="bg-slate-900/50 rounded-3xl border border-white/10 shadow-2xl overflow-hidden mb-8">
           <Calendar
             onChange={setSelectedDate}
             onClickDay={handleDateClick}
             value={selectedDate}
             tileContent={tileContent}
             locale="ja-JP"
-            calendarType="gregory" // ★日曜始まりに設定
+            calendarType="gregory"
             className="full-calendar"
           />
         </div>
 
+        {/* コンディション記録セクション */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl">
+            <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2">
+              🏃‍♂️ CONDITION LOG
+            </h3>
+            <form onSubmit={handleBodyStatsSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Height (cm)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  value={bodyStats.height} onChange={e => setBodyStats({...bodyStats, height: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Weight (kg)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  value={bodyStats.weight} onChange={e => setBodyStats({...bodyStats, weight: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest">Body Fat (%)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all" 
+                  value={bodyStats.body_fat} onChange={e => setBodyStats({...bodyStats, body_fat: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div className="sm:col-span-3">
+                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-blue-500/20">
+                  SAVE TODAY'S STATS
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl flex flex-col justify-center items-center text-center">
+            <div className="mb-4">
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Current BMI</p>
+              <p className="text-5xl font-black text-white">{bmi}</p>
+            </div>
+            <div className="w-full h-px bg-white/5 my-4"></div>
+            <div>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-1">Status</p>
+              <p className="text-2xl font-black text-green-400">OPTIMAL</p>
+            </div>
+          </div>
+        </div>
+
+        {/* タスク修正/作成モーダル */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 border border-white/10 w-full max-w-md p-6 rounded-3xl shadow-2xl">
@@ -126,13 +198,13 @@ function App() {
                 <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500/50" value={content} onChange={(e) => setContent(e.target.value)} placeholder="タスク名" required />
                 <textarea className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 h-24 outline-none focus:ring-2 focus:ring-blue-500/50" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="詳細・メモ" />
                 <div className="flex gap-2">
-                  <button type="submit" className="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500">
+                  <button type="submit" className="flex-1 bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition-all">
                     {editingId ? '更新' : '保存'}
                   </button>
                   {editingId && (
-                    <button type="button" onClick={deleteTask} className="px-4 bg-red-900/30 text-red-500 rounded-xl font-bold border border-red-500/20">削除</button>
+                    <button type="button" onClick={deleteTask} className="px-4 bg-red-900/30 text-red-500 rounded-xl font-bold border border-red-500/20 hover:bg-red-900/50 transition-all">削除</button>
                   )}
-                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 bg-slate-800 text-slate-300 rounded-xl font-bold">戻る</button>
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 transition-all">戻る</button>
                 </div>
               </form>
             </div>
@@ -142,4 +214,5 @@ function App() {
     </div>
   );
 }
+
 export default App;

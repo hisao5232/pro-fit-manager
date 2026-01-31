@@ -121,6 +121,34 @@ app.get('/api/daily-report', async (req, res) => {
   }
 });
 
+// 体組成データの取得（最新30日分など）
+app.get('/api/body-stats', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM body_stats ORDER BY date DESC LIMIT 30');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 体組成データの保存
+app.post('/api/body-stats', async (req, res) => {
+  const { height, weight, body_fat, date } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO body_stats (height, weight, body_fat, date) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (date) DO UPDATE 
+       SET height = EXCLUDED.height, weight = EXCLUDED.weight, body_fat = EXCLUDED.body_fat 
+       RETURNING *`,
+      [height, weight, body_fat, date]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
