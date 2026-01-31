@@ -131,17 +131,19 @@ app.get('/api/body-stats', async (req, res) => {
   }
 });
 
-// 体組成データの保存
+// 体組成データ、30m走の記録保存
 app.post('/api/body-stats', async (req, res) => {
-  const { height, weight, body_fat, date } = req.body;
+  const { height, weight, body_fat, sprint_time, steps, date } = req.body;
   try {
     const result = await pool.query(
-      `INSERT INTO body_stats (height, weight, body_fat, date) 
-       VALUES ($1, $2, $3, $4) 
+      `INSERT INTO body_stats (height, weight, body_fat, sprint_time, steps, date) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
        ON CONFLICT (date) DO UPDATE 
-       SET height = EXCLUDED.height, weight = EXCLUDED.weight, body_fat = EXCLUDED.body_fat 
+       SET height = EXCLUDED.height, weight = EXCLUDED.weight, 
+           body_fat = EXCLUDED.body_fat, sprint_time = EXCLUDED.sprint_time, 
+           steps = EXCLUDED.steps
        RETURNING *`,
-      [height, weight, body_fat, date]
+      [height, weight, body_fat, sprint_time, steps, date]
     );
     res.json(result.rows[0]);
   } catch (err) {
