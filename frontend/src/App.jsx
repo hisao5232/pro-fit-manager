@@ -4,6 +4,8 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './calendar-custom.css';
 import Login from './Login';
+// --- グラフ用インポートを追加 ---
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'https://pro-fit-api.go-pro-world.net/api';
 
@@ -20,12 +22,13 @@ function App() {
 
   // --- コンディション記録の状態管理 ---
   const [bodyStats, setBodyStats] = useState({ height: 177, weight: 63, body_fat: 10 });
+  const [historyData, setHistoryData] = useState([]); // グラフ用データ
 
   useEffect(() => {
     if (isLoggedIn) {
       localStorage.setItem('isLoggedIn', 'true');
       fetchTasks();
-      fetchBodyStats(); // 初回読み込み時に体組成データも取得
+      fetchBodyStats(); 
     }
   }, [isLoggedIn]);
 
@@ -36,32 +39,32 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  // --- データ取得関数 ---
   const fetchBodyStats = async () => {
     try {
       const res = await axios.get(`${API_BASE}/body-stats`);
       if (res.data.length > 0) {
-        // 最新のレコードをセット
         setBodyStats({
           height: res.data[0].height || 177,
           weight: res.data[0].weight || 63,
           body_fat: res.data[0].body_fat || 10
         });
+        // グラフ用にデータを日付順に並び替え
+        const sortedData = [...res.data].reverse();
+        setHistoryData(sortedData);
       }
     } catch (err) { console.error("BodyStats fetch error:", err); }
   };
 
-  // 体組成データの保存
   const handleBodyStatsSubmit = async (e) => {
     e.preventDefault();
     try {
       const dateString = new Date().toLocaleDateString('sv-SE');
       await axios.post(`${API_BASE}/body-stats`, { ...bodyStats, date: dateString });
       alert("コンディションを記録しました！");
+      fetchBodyStats(); // グラフを更新
     } catch (err) { console.error("BodyStats save error:", err); }
   };
 
-  // タスクラベルをクリックした時の処理（修正モード）
   const handleEditClick = (e, task) => {
     e.stopPropagation();
     setEditingId(task.id);
@@ -118,7 +121,6 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
-  // BMI計算ロジック
   const bmi = (bodyStats.weight / ((bodyStats.height / 100) ** 2)).toFixed(1);
 
   if (!isLoggedIn) return <Login onLogin={() => setIsLoggedIn(true)} />;
@@ -145,7 +147,7 @@ function App() {
         </div>
 
         {/* コンディション記録セクション */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl">
             <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2">
               🏃‍♂️ CONDITION LOG
@@ -187,7 +189,64 @@ function App() {
           </div>
         </div>
 
-        {/* タスク修正/作成モーダル */}
+        {/* --- グラフセクション --- */}
+        <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl">
+          <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2">
+            📈 PROGRESS CHART
+          </h3>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={historyData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{fill: '#64748b', fontSize: 10}} 
+                  tickFormatter={(str) => str ? str.split('-').slice(1).join('/') : ''} 
+                />
+                <YAxis 
+                  yAxisId="left" 
+                  stroke="#3b82f6" 
+                  tick={{fill: '#64748b'}} 
+                  domain={['dataMin - 1', 'dataMax + 1']}
+                  label={{ value: '体重(kg)', angle: -90, position: 'insideLeft', fill: '#3b82f6', fontSize: 12 }}
+                />
+                <YAxis 
+                  yAxisId="right" 
+                  orientation="right" 
+                  stroke="#f472b6" 
+                  tick={{fill: '#64748b'}} 
+                  domain={[0, 25]}
+                  label={{ value: '体脂肪(%)', angle: 90, position: 'insideRight', fill: '#f472b6', fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px'}}
+                />
+                <Legend iconType="circle" />
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="weight" 
+                  name="体重" 
+                  stroke="#3b82f6" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#3b82f6' }} 
+                  activeDot={{ r: 8 }} 
+                />
+                <Line 
+                  yAxisId="right" 
+                  type="monotone" 
+                  dataKey="body_fat" 
+                  name="体脂肪率" 
+                  stroke="#f472b6" 
+                  strokeWidth={4} 
+                  dot={{ r: 4, fill: '#f472b6' }} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* モーダルはそのまま */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
             <div className="bg-slate-900 border border-white/10 w-full max-w-md p-6 rounded-3xl shadow-2xl">
