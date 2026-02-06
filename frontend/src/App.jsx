@@ -151,24 +151,63 @@ function App() {
           </div>
         </div>
 
-        {/* 3. グラフセクション (historyDataを使用して再描画) */}
-        <div className="bg-slate-900/50 p-6 rounded-3xl border border-white/10 shadow-xl">
-          <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-2">📈 PROGRESS CHART</h3>
-          <div className="h-[350px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={historyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" tick={{fill: '#64748b', fontSize: 10}} tickFormatter={(str) => str ? str.split('-').slice(1).join('/') : ''} />
-                <YAxis yAxisId="left" stroke="#3b82f6" tick={{fill: '#64748b'}} domain={['dataMin - 1', 'dataMax + 1']} />
-                <YAxis yAxisId="right" orientation="right" stroke="#f472b6" tick={{fill: '#64748b'}} domain={[0, 25]} />
-                <Tooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px'}} />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="weight" name="体重" stroke="#3b82f6" strokeWidth={4} dot={{r: 4}} />
-                <Line yAxisId="right" type="monotone" dataKey="body_fat" name="体脂肪率" stroke="#f472b6" strokeWidth={4} dot={{r: 4}} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* グラフセクションの修正版 */}
+<div className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/10 shadow-xl mb-8">
+  <h3 className="text-xl font-bold text-blue-400 mb-8 flex items-center gap-3">
+     <span className="p-2 bg-blue-500/10 rounded-lg text-sm">📈</span>
+     PROGRESS CHART
+  </h3>
+  <div className="h-[350px] w-full">
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={historyData}>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+        <XAxis 
+          dataKey="date" 
+          tick={{fill: '#475569', fontSize: 10}} 
+          // 日付の文字列から最初の10文字（YYYY-MM-DD）だけ取り、MM/DDに整形
+          tickFormatter={(str) => {
+            if (!str) return '';
+            const dateOnly = str.substring(0, 10); // "2026-02-06" を取得
+            const [y, m, d] = dateOnly.split('-');
+            return `${m}/${d}`;
+          }} 
+          axisLine={false} 
+          tickLine={false} 
+        />
+        <YAxis yAxisId="left" stroke="#3b82f6" tick={{fill: '#475569'}} domain={['dataMin - 1', 'dataMax + 1']} axisLine={false} tickLine={false} />
+        <YAxis yAxisId="right" orientation="right" stroke="#f472b6" tick={{fill: '#475569'}} domain={[0, 25]} axisLine={false} tickLine={false} />
+        <Tooltip 
+          labelFormatter={(label) => label.substring(0, 10)} // ツールチップ内も日付だけに
+          contentStyle={{backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px'}} 
+        />
+        <Legend iconType="circle" wrapperStyle={{paddingTop: '20px'}} />
+        
+        {/* connectNulls={true} を追加して線を繋げる */}
+        <Line 
+          yAxisId="left" 
+          type="monotone" 
+          dataKey="weight" 
+          name="体重" 
+          stroke="#3b82f6" 
+          strokeWidth={4} 
+          dot={{r: 4, fill: '#3b82f6', strokeWidth: 2, stroke: '#0f172a'}} 
+          connectNulls={true} 
+        />
+        <Line 
+          yAxisId="right" 
+          type="monotone" 
+          dataKey="body_fat" 
+          name="体脂肪率" 
+          stroke="#f472b6" 
+          strokeWidth={4} 
+          dot={{r: 4, fill: '#f472b6', strokeWidth: 2, stroke: '#0f172a'}} 
+          connectNulls={true} 
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  </div>
+</div>
+
 
         {/* モーダル */}
         {isModalOpen && (
