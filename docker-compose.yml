@@ -1,12 +1,14 @@
 services:
   backend:
     build: ./backend
-    container_name: rental-backend
+    container_name: profit-backend
     restart: always
     env_file: .env
-    # 外部公開は Traefik 経由にするため、ports の 8000:8000 は不要（内部通信のみ）
+    ports:
+      - "127.0.0.1:3001:3001"
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -15,52 +17,43 @@ services:
       - internal
     labels:
       - "traefik.enable=true"
-      # サブドメインを api-rental に設定
-      - "traefik.http.routers.rental-api.rule=Host(`api-rental.go-pro-world.net`)"
-      - "traefik.http.routers.rental-api.entrypoints=websecure"
-      - "traefik.http.routers.rental-api.tls=true"
-      - "traefik.http.routers.rental-api.tls.certresolver=lets-encrypt"
-      # FastAPI (uvicorn) のポート 8000 を指定
-      - "traefik.http.services.rental-api.loadbalancer.server.port=8000"
+      - "traefik.http.routers.profit-api.rule=Host(`pro-fit-api.go-pro-world.net`)"
+      - "traefik.http.routers.profit-api.entrypoints=websecure"
+      - "traefik.http.routers.profit-api.tls=true"
+      - "traefik.http.routers.profit-api.tls.certresolver=lets-encrypt"
+      - "traefik.http.services.profit-api.loadbalancer.server.port=3001"
       - "traefik.docker.network=traefik-public"
 
   db:
-    image: postgres:16-alpine
-    container_name: rental-db
+    image: postgres:15
+    container_name: profit-db
     restart: always
+    env_file: .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - internal
+      - ./postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - internal
 
   frontend:
     build: ./frontend
-    container_name: rental-frontend
+    container_name: profit-frontend
     restart: always
-    # 本番公開なら ports 指定は不要（Traefikがネットワーク経由で繋ぐため）
+    ports:
+      - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     networks:
-      - traefik-public # Traefikと繋ぐために必要
-      - internal
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.rental-web.rule=Host(`rental.go-pro-world.net`)"
-      - "traefik.http.routers.rental-web.entrypoints=websecure"
-      - "traefik.http.routers.rental-web.tls=true"
-      - "traefik.http.routers.rental-web.tls.certresolver=lets-encrypt"
-      - "traefik.http.services.rental-web.loadbalancer.server.port=3000" # Next.jsのポート
-      - "traefik.docker.network=traefik-public"
+      - internal # backendと同じネットワークに参加
     stdin_open: true
     tty: true
 
@@ -69,6 +62,4 @@ networks:
     external: true
   internal:
     driver: bridge
-
-volumes:
-  postgres_data:
+    

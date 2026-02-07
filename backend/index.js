@@ -52,8 +52,43 @@ app.delete('/api/tasks/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- 体組成・トレーニング記録関連 (重要：修正箇所) ---
+// --- デイリーレポート（Discord通知）---
+app.get('/api/daily-report', async (req, res) => {
+  try {
+    const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+    if (!webhookUrl) return res.status(500).json({ error: "Webhook URLが設定されていません" });
 
+    const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+    const result = await pool.query(
+      'SELECT content, description FROM tasks WHERE due_date::date = $1',
+      [today]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ success: true, message: "本日の予定はありません" });
+    }
+
+    const taskList = result.rows.map(t => `- **${t.content}**: ${t.description || '詳細なし'}`).join('\n');
+    
+    // axios.post の代わりに標準の fetch を使用
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content: `### 📅 本日のトレーニング・タスク (${today})\n${taskList}`
+      })
+    });
+
+    if (!response.ok) throw new Error(`Discord API error: ${response.status}`);
+
+    res.json({ success: true, message: "通知を送信しました" });
+  } catch (err) {
+    console.error("Daily report error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- 体組成・トレーニング記録関連 ---
 app.get('/api/body-stats', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM body_stats ORDER BY date DESC LIMIT 30');
@@ -64,7 +99,6 @@ app.get('/api/body-stats', async (req, res) => {
 app.post('/api/body-stats', async (req, res) => {
   const { height, weight, body_fat, date, train_upper, train_core, train_lower } = req.body;
   try {
-    // COALESCEを使うことで、送られてこなかった値は元の値を保持するようにします
     const result = await pool.query(
       `INSERT INTO body_stats (height, weight, body_fat, date, train_upper, train_core, train_lower)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
