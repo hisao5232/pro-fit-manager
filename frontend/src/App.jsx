@@ -90,26 +90,28 @@ function App() {
               </div>
             ))}
           </div>
-          <div className="flex justify-around items-center pt-1 border-t border-white/5 flex-shrink-0">
-            {[
-              { key: 'train_upper', label: '上' },
-              { key: 'train_core', label: '体' },
-              { key: 'train_lower', label: '下' }
-            ].map(item => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={(e) => toggleTraining(e, dateStr, item.key, dayStats[item.key])}
-                className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition-all pointer-events-auto ${
-                  dayStats[item.key] 
-                  ? 'bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20' 
-                  : 'bg-white/5 text-slate-500 hover:bg-white/10 border border-white/5'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          {/* トレーニングタグ：色分け設定 */}
+<div className="flex justify-around items-center pt-1 border-t border-white/5 flex-shrink-0">
+  {[
+    { key: 'train_upper', label: '上', activeClass: 'bg-red-500 shadow-red-500/40' },
+    { key: 'train_core', label: '体', activeClass: 'bg-orange-500 shadow-orange-500/40' },
+    { key: 'train_lower', label: '下', activeClass: 'bg-blue-500 shadow-blue-500/40' }
+  ].map(item => (
+    <button
+      key={item.key}
+      type="button"
+      onClick={(e) => toggleTraining(e, dateStr, item.key, dayStats[item.key])}
+      className={`text-[10px] w-5 h-5 flex items-center justify-center rounded transition-all pointer-events-auto ${
+        dayStats[item.key] 
+        ? `${item.activeClass} text-white font-bold shadow-lg` 
+        : 'bg-white/5 text-slate-500 hover:bg-white/10 border border-white/5'
+      }`}
+    >
+      {item.label}
+    </button>
+  ))}
+</div>
+
         </div>
       );
     }
