@@ -4,10 +4,15 @@ function Login({ onLogin }) {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
 
+  // --- 1. 環境変数の読み込み ---
+  const validUser = import.meta.env.VITE_LOGIN_USER;
+  const validPass = import.meta.env.VITE_LOGIN_PASS;
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    // 開発用：あとでバックエンド認証に置き換えます
-    if (userId === "hisao" && password === "1983") {
+    
+    // --- 2. 認証チェック ---
+    if (userId === validUser && password === validPass) {
       onLogin();
     } else {
       alert("IDまたはパスワードが違います");
@@ -33,6 +38,7 @@ function Login({ onLogin }) {
               type="text" 
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
               placeholder="Username"
+              autoComplete="username" // ブラウザの自動補完を助ける
               onChange={(e) => setUserId(e.target.value)}
               required
             />
@@ -43,6 +49,7 @@ function Login({ onLogin }) {
               type="password" 
               className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
               placeholder="••••••••"
+              autoComplete="current-password" // ブラウザの自動補完を助ける
               onChange={(e) => setPassword(e.target.value)}
               required
             />
