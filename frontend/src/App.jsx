@@ -80,6 +80,24 @@ function App() {
     } catch (err) { console.error("Save error:", err); }
   };
 
+  // --- 4.5 体組成データの削除操作 ---
+  const handleDeleteBodyStats = async () => {
+    // カレンダーで現在選択している日付をSV-SE形式 (YYYY-MM-DD) で取得
+    const dateString = selectedDate.toLocaleDateString('sv-SE');
+    
+    if (!window.confirm(`${dateString} の体組成データを削除してもよろしいですか？`)) return;
+
+    try {
+      // 前回のバックエンド修正で追加した DELETE ルートを叩く
+      await axios.delete(`${API_BASE}/body-stats/${dateString}`);
+      alert(`${dateString} のデータを削除しました`);
+      fetchBodyStats(); // グラフと履歴を最新状態に更新
+    } catch (err) {
+      console.error("Delete error:", err);
+      alert("削除に失敗しました。その日のデータが存在しない可能性があります。");
+    }
+  };
+
   // --- 5. カレンダーの描画ロジック (重要：カメラアイコン追加) ---
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
@@ -220,13 +238,42 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <div className="lg:col-span-2 bg-slate-900/50 p-8 rounded-[2rem] border border-white/10 shadow-xl">
             <h3 className="text-xl font-bold text-blue-400 mb-6 flex items-center gap-3">
-              <span className="p-2 bg-blue-500/10 rounded-lg text-sm">🏃‍♂️</span> CONDITION LOG
+              <span className="p-2 bg-blue-500/10 rounded-lg text-sm">🏃‍♂️</span> CONDITION LOG 
+              <span className="text-xs font-normal text-slate-500 ml-auto">Selected: {selectedDate.toLocaleDateString('ja-JP')}</span>
             </h3>
             <form onSubmit={handleBodyStatsSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div><label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Height (cm)</label><input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.height} onChange={e => setBodyStats({...bodyStats, height: parseFloat(e.target.value) || 0})} /></div>
-              <div><label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Weight (kg)</label><input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.weight} onChange={e => setBodyStats({...bodyStats, weight: parseFloat(e.target.value) || 0})} /></div>
-              <div><label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Body Fat (%)</label><input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.body_fat} onChange={e => setBodyStats({...bodyStats, body_fat: parseFloat(e.target.value) || 0})} /></div>
-              <button type="submit" className="sm:col-span-3 bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98]">SAVE DATA</button>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Height (cm)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.height} onChange={e => setBodyStats({...bodyStats, height: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Weight (kg)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.weight} onChange={e => setBodyStats({...bodyStats, weight: parseFloat(e.target.value) || 0})} />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 mb-2 tracking-widest uppercase">Body Fat (%)</label>
+                <input type="number" step="0.1" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:ring-2 focus:ring-blue-500/50 transition-all text-white" value={bodyStats.body_fat} onChange={e => setBodyStats({...bodyStats, body_fat: parseFloat(e.target.value) || 0})} />
+              </div>
+
+              {/* ボタンエリア: 保存と削除 */}
+              <div className="sm:col-span-3 flex gap-4">
+                <button 
+                  type="submit" 
+                  className="flex-[4] bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-blue-600/20 active:scale-[0.98]"
+                >
+                  SAVE DATA
+                </button>
+                <button 
+                  type="button" 
+                  onClick={handleDeleteBodyStats}
+                  className="flex-1 bg-slate-800 hover:bg-red-900/40 text-slate-400 hover:text-red-500 border border-white/5 hover:border-red-500/20 rounded-2xl transition-all flex items-center justify-center shadow-lg"
+                  title="選択した日付のデータを削除"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
             </form>
           </div>
           <div className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/10 flex flex-col justify-center items-center text-center shadow-xl">

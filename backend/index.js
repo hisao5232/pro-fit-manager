@@ -149,6 +149,21 @@ app.post('/api/body-stats', async (req, res) => {
   }
 });
 
+// 体組成データ削除
+app.delete('/api/body-stats/:date', async (req, res) => {
+  const { date } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM body_stats WHERE date = $1', [date]);
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: "該当する日付のデータが見つかりません" });
+    }
+    res.json({ success: true, message: `${date} のデータを削除しました` });
+  } catch (err) {
+    console.error("body-stats delete error:", err.message);
+    res.status(500).json({ error: "削除に失敗しました" });
+  }
+});
+
 // --- 5. サーバー起動 ---
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);

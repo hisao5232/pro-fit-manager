@@ -16,12 +16,15 @@ services:
     build: ./backend
     container_name: profit-backend
     restart: always
-    # ports: - "3001:3001"  # Traefik経由ならポート開放も不要（内部通信のみでOK）
+    # 個別に渡すのではなく、ファイルごと読み込ませます
+    env_file:
+      - .env
     environment:
+      # DBへの接続URLだけは、コンテナ名の「db」を使う必要があるので残します
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL}
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./.env:/app/.env
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.profit-api.rule=Host(`pro-fit-api.go-pro-world.net`)"
